@@ -1,4 +1,6 @@
-use std::{env, fs, process};
+use colored::*;
+use minigrep::Config;
+use std::{env, process};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -9,30 +11,13 @@ fn main() {
     });
 
     println!(
-        "Searching for {}\nIn file {}",
-        config.query, config.filename
+        "Searching for {}\nIn file {}\n",
+        config.query.red().bold(),
+        config.filename.blue()
     );
 
-    run(config);
-}
-fn run(config: Config) {
-    let contents = fs::read_to_string(&config.filename)
-        .expect(&format!("Could not read file {}", config.filename)[..]);
-
-    println!("With text:\n{}", contents);
-}
-struct Config {
-    query: String,
-    filename: String,
-}
-impl Config {
-    fn new(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() < 3 {
-            return Err("Not enough arguments! Please supply pattern and filename!");
-        }
-        Ok(Config {
-            query: args[1].clone(),
-            filename: args[2].clone(),
-        })
+    if let Err(e) = minigrep::run(config) {
+        println!("Application Error: {}", e);
+        process::exit(1);
     }
 }
