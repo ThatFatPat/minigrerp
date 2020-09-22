@@ -1,5 +1,5 @@
 use colored::*;
-use std::{env, error::Error, fs};
+use std::{borrow::Cow, env, error::Error, fs};
 pub struct Config {
     pub query: String,
     pub filename: String,
@@ -32,7 +32,7 @@ impl Config {
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let contents = fs::read_to_string(&config.filename)?;
     let res = if config.case_sensitive {
-        search(&config.query, &contents)
+        search_case_sensitive(&config.query, &contents)
     } else {
         search_case_insensitive(&config.query, &contents)
     };
@@ -42,37 +42,34 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn search<'a>(query: &str, contents: &'a str) -> Vec<SingleLineResult<'a>> {
-    let mut results = Vec::new();
-
-    for line in contents.lines() {
-        let matches: Vec<_> = line.match_indices(query).collect();
-        if !matches.is_empty() {
-            results.push(SingleLineResult { line, matches })
-        }
-    }
-
-    results
+fn search_case_sensitive<'a>(query: &str, contents: &'a str) -> Vec<SingleLineResult<'a>> {
+    search(query, contents, |line| Cow::Borrowed(line))
 }
 fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<SingleLineResult<'a>> {
-    let mut results = Vec::new();
-
-    for line in contents.lines() {
-        let lowercase = line.to_lowercase();
-        let matches: Vec<_> = lowercase.match_indices(&query.to_lowercase()).collect();
-        if !matches.is_empty() {
-            results.push(SingleLineResult {
-                line,
-                matches: matches
-                    .iter()
-                    .map(|(idx, value)| (*idx, &line[*idx..*idx + value.len()]))
-                    .collect(),
-            })
-        }
-    }
-
-    results
+    search(query, contents, |line| Cow::Owned(line.to_lowercase()))
 }
+
+fn search<'a, T>(query: &str, contents: &'a str, callable: T) -> Vec<SingleLineResult<'a>>
+where
+    T: for<'b> Fn(&'b str) -> Cow<'b, str>,
+{
+    let query = callable(query);
+    contents
+        .lines()
+        .map(|line| -> (&str, Vec<_>) {
+            (
+                line,
+                callable(line)
+                    .match_indices(&*query)
+                    .map(|(idx, value)| (idx, &line[idx..idx + value.len()]))
+                    .collect(),
+            )
+        })
+        .filter(|(_line, res)| !res.is_empty())
+        .map(|(line, matches)| SingleLineResult { line, matches })
+        .collect()
+}
+
 fn colored_print(line: &SingleLineResult) {
     let mut curr_idx: usize = 0;
     for (idx, value) in line.matches.iter() {
