@@ -103,14 +103,14 @@ Pick three.";
             matches: vec![(15, "duct")],
         };
 
-        assert_eq!(vec![result], search(query, contents));
+        assert_eq!(vec![result], search_case_sensitive(query, contents));
     }
     #[test]
     fn no_result() {
         let query = "Naharda!";
         let contents = "Not the word\nAlso not the word.";
         let cmp: Vec<SingleLineResult> = vec![];
-        assert_eq!(cmp, search(query, contents));
+        assert_eq!(cmp, search_case_sensitive(query, contents));
     }
     #[test]
     fn multiple_results() {
@@ -138,7 +138,7 @@ Naharda! Naharda Naharda!";
                     matches: vec![(0, "Naharda!"), (17, "Naharda!")]
                 }
             ],
-            search(query, contents)
+            search_case_sensitive(query, contents)
         );
     }
     #[test]
@@ -155,7 +155,7 @@ Duct tape.";
                 line: "safe, fast, productive.",
                 matches: vec![(15, "duct")]
             }],
-            search(query, contents)
+            search_case_sensitive(query, contents)
         );
     }
 
